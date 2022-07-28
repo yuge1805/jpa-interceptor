@@ -21,4 +21,10 @@ public class GoodsRepositoryTest {
         log.info(String.valueOf(all));
     }
 
+    @Test
+    public void test2() {
+        Goods goods = goodsRepository.findGoodsByName("11");
+        log.info(String.valueOf(goods));
+    }
+
 }
