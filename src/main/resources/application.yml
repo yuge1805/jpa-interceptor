@@ -10,10 +10,8 @@ spring:
   jpa:
     properties:
       hibernate:
-#        ejd:
-#          interceptor: com.yuge.jpa.jpainterceptor.datarule.OwnInterceptor
         session_factory:
-#          statement_inspector: com.yuge.jpa.jpainterceptor.datarule.DataRuleInterceptor
-#          session_scoped_interceptor: com.yuge.jpa.jpainterceptor.datarule.OwnInterceptor
-          interceptor: com.yuge.jpa.jpainterceptor.datarule.OwnInterceptor
+#          statement_inspector: com.yuge.jpa.jpainterceptor.datarule.OwnInspector
+#          session_scoped_interceptor: com.yuge.jpa.jpainterceptor.datarule.DataRuleInterceptor
+          interceptor: com.yuge.jpa.jpainterceptor.datarule.DataRuleInterceptor
 

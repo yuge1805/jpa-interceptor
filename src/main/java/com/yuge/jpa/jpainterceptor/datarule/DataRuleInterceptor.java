@@ -1,30 +1,71 @@
 package com.yuge.jpa.jpainterceptor.datarule;
 
+import com.yuge.jpa.jpainterceptor.config.RepositoryMethodContext;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
-import org.hibernate.resource.jdbc.spi.StatementInspector;
+import org.aopalliance.intercept.MethodInvocation;
+import org.hibernate.EmptyInterceptor;
+import org.springframework.aop.framework.Advised;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.aop.framework.ReflectiveMethodInvocation;
+import org.springframework.aop.interceptor.ExposeInvocationInterceptor;
+import org.springframework.core.DecoratingProxy;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 
 /**
- * https://www.jianshu.com/p/3103871d5907?u_atoken=a9eca772-3a94-4ca6-9cbc-bb7e4884c4a4&u_asession=018PtQPi55FATScd048pVTcSymbADdJW-TCOudU4xWTi55CQzPBWTsFkT8ks28XEsAX0KNBwm7Lovlpxjd_P_q4JsKWYrT3W_NKPr8w6oU7K-PpE3oPAqeTP88Bb4_L9jvnHmbkqVcEgdObpAroqY1_GBkFo3NEHBv0PZUm6pbxQU&u_asig=05x4JPm4vs5zdTq4YEVpzE7NTpEx0eyTHOOgO2Crl1P-q6KGtqKK2lolRHg_ciMcWj3Xnq8ShsekCtyIXfJtQigN1pAETvhhh0_NUx70vJLOqGFjlDtfl_M2nGz_K2xNBuVDnVsuNzGGAWtpkdIlHrKOKZ8G6CKpD__--mzXFfyc79JS7q8ZD7Xtz2Ly-b0kmuyAKRFSVJkkdwVUnyHAIJzbqd183qsgdwB5Ee-4_oPc8zVrVasviERKq6muEs9MbB6xbSxAaWh9ph0bRUFW-6vO3h9VXwMyh6PgyDIVSG1W9QIxqo8JEc05egsMAylDebXNs2pKup7IWhB7LL2MZFi8Y3XShqqLjYJhPWFvjiTUnoQx6iuVE4l2omFfmB4G8bmWspDxyAEEo4kbsryBKb9Q&u_aref=8L%2FH3rv4gnWbK450EchULmJN5dQ%3D
- *
  * @author: zhangbw
- * @date: 2022-07-25
+ * @date: 2022-07-26
  **/
 @Slf4j
-public class DataRuleInterceptor implements StatementInspector {
+public class DataRuleInterceptor extends EmptyInterceptor {
+
+    public DataRuleInterceptor() {
+      log.info("11111");
+    }
 
     @Override
-    public String inspect(String sql) {
-        log.info(sql);
+    public String onPrepareStatement(String sql) {
+        String method = getRepositoryMethod();
+        log.info("method:" + method);
         try {
             Statement statement = CCJSqlParserUtil.parse(sql);
-
+            // 处理同mybatis, 需考虑别名情况
         } catch (JSQLParserException e) {
             e.printStackTrace();
         }
         return sql;
+    }
+
+    private String getRepositoryMethod() {
+        MethodInvocation methodInvocation = ExposeInvocationInterceptor.currentInvocation();
+        String className = methodInvocation.getMethod().getDeclaringClass().getName();
+        String methodName = methodInvocation.getMethod().getName();
+        if (!methodInvocation.getMethod().getDeclaringClass().equals(JpaRepository.class)) {
+            return String.format("%s.%s", className, methodName);
+        }
+        if (methodInvocation instanceof ReflectiveMethodInvocation) {
+            Object proxy = ((ReflectiveMethodInvocation) methodInvocation).getProxy();
+            InvocationHandler invocationHandler = Proxy.getInvocationHandler(proxy);
+            try {
+                Method getProxiedInterfaces = Advised.class.getDeclaredMethod("getProxiedInterfaces");
+                Object invoke = invocationHandler.invoke(null, getProxiedInterfaces, null);
+                Class<?>[] classes = (Class<?>[]) invoke;
+                if (classes.length > 0 ) {
+                    className = classes[0].getName();
+                }
+            } catch (Throwable e) {
+                log.error("getRepositoryMethod error!", e);
+            }
+        }
+        return String.format("%s.%s", className, methodName);
+
     }
 
 }
